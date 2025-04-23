@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    platform: linux/x86_64
+    environment:
+      MYSQL_ROOT_PASSWORD: your_root_password
+      MYSQL_DATABASE: your_database_name
+      MYSQL_USER: your_database_user
+      MYSQL_PASSWORD: your_database_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 3
+
+  backend:
+    build: ./backend
+    platform: linux/x86_64
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}
+      JWT_SECRET: your_jwt_secret_key
+      PORT: 3000
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    command: npm run dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/users/health"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build: ./frontend
+    platform: linux/x86_64
+    ports:
+      - "3001:80"
+    environment:
+      REACT_APP_BACKEND_URL: http://localhost:3000 
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    command: npm start
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  python-api:
+    build: ./python-api
+    platform: linux/x86_64
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./python-api:/app
+    environment:
+      
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"] 
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  db_data:
+  backend_node_modules:
+  frontend_node_modules:
