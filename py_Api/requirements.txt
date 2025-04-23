@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+pydantic
+# Adicione outras bibliotecas que sua lógica de IA possa precisar
+# Exemplo:
+# scikit-learn
+# nltk
+# tensorflow
